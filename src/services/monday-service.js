@@ -36,6 +36,9 @@ const getColumnValue = async (token, itemId) => {
         name
         column_values {
           id
+          column {
+          title
+          }
           value
           text,
           type
@@ -50,7 +53,17 @@ const getColumnValue = async (token, itemId) => {
     const variables = { itemId };
 
     const response = await mondayClient.api(query, { variables });
-    return response.data.items[0];
+
+    const data = response.data.items[0];
+    const columns = data.column_values.map((item) => ({
+      ...item,
+      title: item.column.title,
+    }));
+
+    return {
+      ...data,
+      column_values: columns,
+    };
   } catch (error) {
     logger.error('Error fetching item details:', error);
     return null;
