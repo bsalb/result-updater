@@ -1,31 +1,31 @@
 const logger = require('../../utils/logger');
-const Column = require('../models/column.schema');
+const Item = require('../models/column.schema');
 
-const saveOrUpdateColumn = async (columnData) => {
+const saveOrUpdateColumn = async (data) => {
   try {
-    const { columnId, title, type, value, boardId } = columnData;
+    let item = await Item.findOne({ id: data.id });
 
-    const existingColumn = await Column.findOne({ columnId });
-
-    if (existingColumn) {
-      existingColumn.value = value;
-      existingColumn.type = type;
-      existingColumn.boardId = boardId;
-
-      await existingColumn.save();
-
-      logger.info(`Column ${columnId} updated successfully.`);
-      return existingColumn;
+    if (!item) {
+      item = new Item({
+        ...data,
+      });
     } else {
-      const newColumn = new Column({ columnId, title, type, value, boardId });
+      data.columns.forEach((col) => {
+        const columnIndex = item.columns.findIndex((c) => c.id === col.id);
 
-      await newColumn.save();
-
-      logger.info(`Column ${columnId} saved successfully.`);
-      return newColumn;
+        if (columnIndex !== -1) {
+          item.columns[columnIndex] = col;
+        } else {
+          item.columns.push(col);
+        }
+      });
     }
+
+    await item.save();
+    logger.info('Success');
+    return item;
   } catch (error) {
-    logger.error('Error saving/updating column:', error);
+    logger.error('Error saving or updating item:', error);
     throw error;
   }
 };
