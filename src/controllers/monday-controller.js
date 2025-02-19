@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const { saveOrUpdateColumn } = require('../services/column-service');
 const mondayService = require('../services/monday-service');
 
@@ -12,34 +13,41 @@ async function updateResult(req, res) {
 
     const data = await mondayService.getColumnValue(shortLivedToken, itemId);
 
-    const { board, column_values } = data;
+    const { board, column_values, name } = data;
 
-    const number = parseFloat(column_values[0].text) || 0;
+    const numberColumn = column_values.find(({ title }) => title === 'Numbers');
+    const resultColumn = column_values.find(({ title }) => title === 'Result');
+
+    const number = parseFloat(numberColumn.text) || 0;
 
     const newResult = number * 5;
 
     const result = {
-      columnId: column_values[1].id,
+      ...resultColumn,
       text: newResult,
       value: newResult,
-      boardId: board.id,
-      type: column_values[1].type,
     };
 
-    const response = await mondayService.updateColumnValue(
-      shortLivedToken,
-      itemId,
-      column_values[1].id,
-      newResult,
-      board.id
-    );
+    const existingColumns = column_values.filter((column) => column.id !== resultColumn.id);
+
+    const columns = [...existingColumns, result];
+
+    const response = await mondayService.updateColumnValue(shortLivedToken, itemId, result.id, result.value, board.id);
 
     if (response) {
-      await saveOrUpdateColumn(result);
+      const data = {
+        id: itemId,
+        name,
+        columns,
+      };
+
+      await saveOrUpdateColumn(data);
 
       res.json({ success: true });
     }
-  } catch (error) {}
+  } catch (error) {
+    logger.error('failed to update result');
+  }
 }
 
 module.exports = {
